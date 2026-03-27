@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWS MLA-C01 Practice</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header id="appHeader" style="display:none">
+    <div class="header-inner">
+      <button id="btnHome" class="btn-ghost">AWS MLA-C01</button>
+      <div id="headerStats" class="header-stats"></div>
+      <div id="examTimerDisplay" class="exam-timer" style="display:none">⏱ <span id="timerVal">00:00</span></div>
+      <div class="header-actions">
+        <button id="btnDarkMode" class="btn-ghost" title="Dark mode">🌙</button>
+        <button id="btnAnalytics" class="btn-ghost" title="Analytics">📊 Stats</button>
+        <button id="btnResetConfirm" class="btn-ghost danger" title="Reset progress">↺</button>
+      </div>
+    </div>
+    <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+  </header>
+
+  <!-- HOME VIEW -->
+  <div id="homeView" class="view">
+    <div class="home-card">
+      <div class="home-title">
+        <div class="home-top-actions">
+          <div class="aws-badge">AWS</div>
+          <button id="btnDarkModeHome" class="btn-dark-toggle" title="Dark mode">🌙</button>
+        </div>
+        <h1>MLA-C01 Practice</h1>
+        <p>230 questions · Machine Learning Engineer Associate</p>
+      </div>
+      <div class="mode-grid">
+        <button class="mode-btn active" data-mode="all">
+          <span class="mode-icon">🎯</span>
+          <span class="mode-label">All Questions</span>
+          <span class="mode-count" id="countAll">230</span>
+        </button>
+        <button class="mode-btn" data-mode="weak">
+          <span class="mode-icon">⚠️</span>
+          <span class="mode-label">Need Practice</span>
+          <span class="mode-count" id="countWeak">0</span>
+        </button>
+        <button class="mode-btn" data-mode="unseen">
+          <span class="mode-icon">🆕</span>
+          <span class="mode-label">Not Seen</span>
+          <span class="mode-count" id="countUnseen">230</span>
+        </button>
+        <button class="mode-btn" data-mode="bookmark">
+          <span class="mode-icon">🔖</span>
+          <span class="mode-label">Bookmarked</span>
+          <span class="mode-count" id="countBookmark">0</span>
+        </button>
+      </div>
+      <div class="filter-row">
+        <label>Topic:</label>
+        <select id="topicFilter">
+          <option value="all">All Topics</option>
+        </select>
+      </div>
+      <button id="btnStart" class="btn-primary btn-large">Start Practice →</button>
+      <button id="btnStartExam" class="btn-exam">
+        ⏱ Exam Simulation
+        <span class="exam-meta">65Q · 170 min · pass 72%</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- QUIZ VIEW -->
+  <div id="quizView" class="view" style="display:none">
+    <div class="question-card" id="questionCard">
+      <div class="q-meta">
+        <span id="qNumber" class="q-number"></span>
+        <span id="qTopic" class="q-topic-badge"></span>
+        <span id="qType" class="q-type-badge"></span>
+        <span id="qHistory" class="q-history"></span>
+        <button id="btnBookmark" class="btn-bookmark" title="Bookmark (B)">☆</button>
+      </div>
+      <div id="questionText" class="question-text"></div>
+      <div id="choicesContainer" class="choices-container"></div>
+      <div id="feedbackBox" class="feedback-box" style="display:none"></div>
+      <div id="kbHint" class="kb-hint">⌨ A/B/C/D · Enter to submit · → skip · B bookmark</div>
+      <div class="q-actions">
+        <button id="btnSubmit" class="btn-primary">Check Answer</button>
+        <button id="btnNext" class="btn-primary" style="display:none">Next →</button>
+        <button id="btnSkip" class="btn-ghost">Skip</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS VIEW -->
+  <div id="analyticsView" class="view" style="display:none">
+    <div class="analytics-wrap">
+      <div class="analytics-header">
+        <h2>Your Progress</h2>
+        <div class="analytics-actions">
+          <button id="btnExport" class="btn-action">⬇ Export</button>
+          <label class="btn-action" style="cursor:pointer">
+            ⬆ Import
+            <input type="file" id="importFile" accept=".json" style="display:none">
+          </label>
+          <button id="btnBackQuiz" class="btn-ghost">← Back</button>
+        </div>
+      </div>
+      <div id="summaryCards" class="summary-cards"></div>
+      <div class="table-controls">
+        <input id="searchQ" type="search" placeholder="Search questions…" />
+        <select id="sortBy">
+          <option value="wrong">Most Wrong First</option>
+          <option value="right">Most Correct First</option>
+          <option value="attempts">Most Attempted</option>
+          <option value="number">By Question #</option>
+        </select>
+        <select id="filterStatus">
+          <option value="all">All</option>
+          <option value="weak">Need Practice</option>
+          <option value="ok">Mastered</option>
+          <option value="unseen">Not Seen</option>
+          <option value="bookmark">🔖 Bookmarked</option>
+        </select>
+      </div>
+      <div id="analyticsTable" class="analytics-table"></div>
+    </div>
+  </div>
+
+  <script src="questions.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
