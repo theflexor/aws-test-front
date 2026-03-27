@@ -365,6 +365,71 @@ body {
 .badge-hotspot { font-size: .72rem; background: #fef9c3; color: #854d0e; padding: 1px 7px; border-radius: 10px; white-space: nowrap; }
 .badge-mcq { font-size: .72rem; background: #e0e7ff; color: #3730a3; padding: 1px 7px; border-radius: 10px; }
 
+/* ── DAILY CARD ── */
+.daily-card {
+  max-width: 520px;
+  margin: 12px auto 0;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.08);
+  border: 2px solid #dbeafe;
+}
+.daily-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.daily-title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+.daily-streak {
+  font-size: .88rem;
+  color: var(--text-muted);
+}
+.daily-streak strong { color: #ea580c; font-size: 1rem; }
+.daily-progress-wrap { margin-bottom: 14px; }
+.daily-prog-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: .82rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.daily-prog-bg {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.daily-prog-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #6366f1);
+  border-radius: 4px;
+  transition: width .4s ease;
+}
+.btn-daily {
+  width: 100%;
+  padding: 11px;
+  background: #eff6ff;
+  border: 2px solid #bfdbfe;
+  border-radius: 9px;
+  color: #1d4ed8;
+  font-size: .95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-daily:hover:not(:disabled) { background: #dbeafe; border-color: #93c5fd; }
+.btn-daily:disabled { opacity: .6; cursor: default; }
+
+.dark .daily-card { background: var(--card); border-color: #1e3a5f; }
+.dark .daily-prog-bg { background: #334155; }
+.dark .btn-daily { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+.dark .btn-daily:hover:not(:disabled) { background: #1d4ed8; color: #fff; }
+
 /* ── MULTI-SELECT HINT ── */
 .multi-hint {
   font-size: .82rem;

@@ -6,6 +6,7 @@ const API_BASE  = '/api';
 
 let stats      = {};
 let bookmarks  = new Set();
+let daily      = {};
 let serverMode = true;
 
 let session = {
@@ -39,6 +40,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   applyDarkMode();
   await loadStats();
   await loadBookmarks();
+  await loadDaily();
   populateTopics();
   updateHomeCounts();
   showView('homeView');
@@ -70,6 +72,7 @@ function bindEvents() {
   document.getElementById('btnDarkModeHome').addEventListener('click', toggleDarkMode);
   document.getElementById('btnExport').addEventListener('click', exportProgress);
   document.getElementById('importFile').addEventListener('change', importProgress);
+  document.getElementById('btnStartDaily').addEventListener('click', startDailyQuiz);
   document.getElementById('sortBy').addEventListener('change', renderAnalyticsTable);
   document.getElementById('filterStatus').addEventListener('change', renderAnalyticsTable);
   document.getElementById('searchQ').addEventListener('input', renderAnalyticsTable);
@@ -113,6 +116,11 @@ async function recordAnswer(num, isCorrect) {
   } else {
     saveLocal();
   }
+
+  // Track daily progress if this question is in today's daily queue
+  if (session.mode === 'daily' || (daily.queue && daily.queue.includes(num))) {
+    await markDailyDone(num);
+  }
 }
 
 async function resetProgress() {
@@ -122,10 +130,13 @@ async function resetProgress() {
   }
   localStorage.removeItem(STATS_KEY);
   localStorage.removeItem('mla_bookmarks');
+  localStorage.removeItem('mla_daily');
   stats = {};
   bookmarks.clear();
+  daily = {};
   updateHomeCounts();
   updateHeaderStats();
+  renderDailyCard();
   showToast('Progress reset');
 }
 
@@ -165,6 +176,174 @@ async function toggleBookmark() {
   showToast(add ? '🔖 Bookmarked' : 'Bookmark removed');
 }
 
+// ── DAILY STUDY ───────────────────────────────────────────────────────────────
+const DAILY_GOAL = 20;
+
+function getTodayKey() {
+  return new Date().toISOString().slice(0, 10); // "2026-03-28"
+}
+
+async function loadDaily() {
+  try {
+    const res = await fetch(`${API_BASE}/daily`);
+    if (!res.ok) throw new Error();
+    daily = await res.json();
+  } catch {
+    try { daily = JSON.parse(localStorage.getItem('mla_daily') || '{}'); } catch { daily = {}; }
+  }
+  checkStreakReset();
+}
+
+async function saveDaily() {
+  localStorage.setItem('mla_daily', JSON.stringify(daily));
+  if (serverMode) {
+    try {
+      await fetch(`${API_BASE}/daily`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(daily),
+      });
+    } catch { /* ignore */ }
+  }
+}
+
+function checkStreakReset() {
+  const today     = getTodayKey();
+  const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  const last      = daily.lastCompletedDate;
+
+  // Streak resets if last completion was before yesterday
+  if (last && last !== today && last !== yesterday) {
+    daily.streak = 0;
+  }
+}
+
+// Priority score: higher = show sooner
+function questionPriority(q) {
+  const s = getQStat(q.number);
+  if (s.attempts === 0) return 100;                           // never seen
+  const acc         = s.correct / s.attempts;
+  const daysSince   = s.last ? (Date.now() - s.last) / 864e5 : 999;
+  if (acc < 0.5)              return 80 + daysSince * 0.1;   // mostly wrong
+  if (acc < 0.7)              return 60 + daysSince * 0.1;   // weak
+  if (daysSince > 14)         return 40;                     // long overdue
+  if (daysSince > 7)          return 25;                     // due for review
+  return 5;                                                   // recently mastered
+}
+
+function generateDailyQueue() {
+  const today = getTodayKey();
+
+  // Reuse today's queue if already generated
+  if (daily.queueDate === today && daily.queue && daily.queue.length) {
+    return daily.queue;
+  }
+
+  // Generate new queue sorted by priority + small random tie-break
+  const sorted = [...QUESTIONS]
+    .map(q => ({ num: q.number, score: questionPriority(q) + Math.random() * 8 }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, DAILY_GOAL)
+    .map(x => x.num);
+
+  daily.queueDate = today;
+  daily.queue     = sorted;
+  daily.done      = daily.done && daily.doneDate === today ? daily.done : [];
+  daily.doneDate  = today;
+  saveDaily();
+  return sorted;
+}
+
+function startDailyQuiz() {
+  const today     = getTodayKey();
+  const fullQueue = generateDailyQueue();
+  const doneSet   = new Set(daily.doneDate === today ? (daily.done || []) : []);
+  const remaining = fullQueue.filter(n => !doneSet.has(n));
+
+  if (!remaining.length) {
+    showToast('🎉 All done for today! Come back tomorrow.');
+    return;
+  }
+
+  session.queue    = remaining;
+  session.index    = 0;
+  session.mode     = 'daily';
+  session.isExam   = false;
+  session.examAnswers = {};
+  stopTimer();
+  restoreQActions();
+  showView('quizView');
+  renderQuestion();
+}
+
+async function markDailyDone(num) {
+  const today = getTodayKey();
+  if (daily.doneDate !== today) { daily.done = []; daily.doneDate = today; }
+  if (!daily.done.includes(num)) daily.done.push(num);
+
+  // Check if today's goal is reached
+  const fullQueue = generateDailyQueue();
+  const doneSet   = new Set(daily.done);
+  const completed = fullQueue.filter(n => doneSet.has(n)).length;
+
+  if (completed >= fullQueue.length && daily.lastCompletedDate !== today) {
+    daily.lastCompletedDate = today;
+    daily.streak = (daily.streak || 0) + 1;
+    showToast(`🔥 Daily complete! Streak: ${daily.streak} days`);
+  }
+
+  await saveDaily();
+  renderDailyCard();
+}
+
+function renderDailyCard() {
+  const today     = getTodayKey();
+  const fullQueue = generateDailyQueue();
+  const doneSet   = new Set(daily.doneDate === today ? (daily.done || []) : []);
+  const done      = fullQueue.filter(n => doneSet.has(n)).length;
+  const total     = fullQueue.length;
+  const streak    = daily.streak || 0;
+  const allDone   = done >= total;
+  const pct       = Math.round(done / total * 100);
+
+  // Streak
+  const streakEl = document.getElementById('dailyStreak');
+  if (streakEl) {
+    streakEl.innerHTML = streak > 0
+      ? `🔥 <strong>${streak}</strong> day${streak > 1 ? 's' : ''} streak`
+      : '🌱 Start your streak!';
+  }
+
+  // Progress bar + label
+  const progressEl = document.getElementById('dailyProgress');
+  if (progressEl) {
+    progressEl.innerHTML = `
+      <div class="daily-prog-label">
+        <span>${allDone ? '✅ All done today!' : `${done} / ${total} questions`}</span>
+        <span>${pct}%</span>
+      </div>
+      <div class="daily-prog-bg">
+        <div class="daily-prog-fill" style="width:${pct}%"></div>
+      </div>
+    `;
+  }
+
+  // Button label
+  const btn = document.getElementById('btnStartDaily');
+  if (btn) {
+    if (allDone) {
+      btn.textContent = '🎉 Come back tomorrow!';
+      btn.disabled = true;
+    } else if (done > 0) {
+      btn.textContent = `Continue (${total - done} left) →`;
+      btn.disabled = false;
+    } else {
+      btn.textContent = 'Start Today\'s Session →';
+      btn.disabled = false;
+    }
+  }
+}
+
 // ── DARK MODE ─────────────────────────────────────────────────────────────────
 function toggleDarkMode() {
   document.body.classList.toggle('dark');
@@ -187,7 +366,7 @@ function showView(id) {
     document.getElementById(v).style.display = v === id ? '' : 'none';
   });
   document.getElementById('appHeader').style.display = id === 'homeView' ? 'none' : '';
-  if (id === 'homeView') { stopTimer(); updateHomeCounts(); syncDarkBtn(); }
+  if (id === 'homeView') { stopTimer(); updateHomeCounts(); renderDailyCard(); syncDarkBtn(); }
   if (id === 'analyticsView') renderAnalytics();
 }
 
